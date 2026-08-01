@@ -82,6 +82,8 @@ app.post("/generate", async (req, res) => {
       );
 
       const data = await response.json();
+      console.log("Status:", response.status);
+console.log(JSON.stringify(data, null, 2));
 
       if (!response.ok) {
         errors.push(
