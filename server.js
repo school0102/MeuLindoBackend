@@ -8,7 +8,7 @@ app.use(express.json({ limit: "2mb" }));
 
 const MODELS = [
   "gemini-2.0-flash",
-  "gemini-1.5-flash"
+  "gemini-2.0-flash-lite"
 ];
 
 app.get("/", (req, res) => {
