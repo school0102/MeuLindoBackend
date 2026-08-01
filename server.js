@@ -15,6 +15,17 @@ app.get("/", (req, res) => {
   res.send("Backend do Escritor Baiano online ✅");
 });
 
+app.get("/models", async (req, res) => {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+  );
+
+  const data = await response.json();
+  res.json(data);
+});
+
 app.post("/generate", async (req, res) => {
   const { prompt, system, model } = req.body;
 
