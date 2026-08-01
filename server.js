@@ -6,9 +6,8 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
-const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
+const GEMINI_MODELS = [
+  "gemini-2.0-flash-lite",
   "gemini-2.0-flash"
 ];
 
