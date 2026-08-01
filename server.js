@@ -7,10 +7,9 @@ app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
 const MODELS = [
-  "nex-agi/nex-n2-pro:free",
-  "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
-  "mistralai/mistral-small-3.2-24b-instruct:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free"
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-2.0-flash"
 ];
 
 app.get("/", (req, res) => {
@@ -21,11 +20,17 @@ app.post("/generate", async (req, res) => {
   const { prompt, system, model } = req.body;
 
   if (!prompt || !prompt.trim()) {
-    return res.status(400).json({ error: "Prompt vazio." });
+    return res.status(400).json({
+      error: "Prompt vazio."
+    });
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return res.status(500).json({ error: "OPENROUTER_API_KEY não configurada no servidor." });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({
+      error: "GEMINI_API_KEY não configurada."
+    });
   }
 
   const selectedModels = model
@@ -38,39 +43,60 @@ app.post("/generate", async (req, res) => {
     const currentModel = selectedModels[i];
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://escritor-baiano-backend",
-          "X-Title": "Escritor Baiano"
-        },
-        body: JSON.stringify({
-          model: currentModel,
-          messages: [
-            {
-              role: "system",
-              content: system || "Escreva em português brasileiro, de forma natural, sem markdown e sem pular linhas duplas."
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [
+                {
+                  text:
+                    system ||
+                    "Escreva em português brasileiro, de forma natural, sem markdown e sem pular linhas duplas."
+                }
+              ]
             },
-            {
-              role: "user",
-              content: prompt
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 6000,
+              topP: 0.95,
+              topK: 40
             }
-          ],
-          temperature: 0.8,
-          max_tokens: 6000
-        })
-      });
+          })
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        errors.push(`${currentModel}: ${data?.error?.message || "erro desconhecido"}`);
+        errors.push(
+          `${currentModel}: ${
+            data?.error?.message || "erro desconhecido"
+          }`
+        );
         continue;
       }
 
-      const text = data?.choices?.[0]?.message?.content?.trim();
+      const text =
+        data?.candidates?.[0]?.content?.parts
+          ?.map(part => part.text)
+          .join("")
+          ?.trim();
 
       if (!text) {
         errors.push(`${currentModel}: resposta vazia`);
